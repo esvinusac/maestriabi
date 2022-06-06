@@ -1,0 +1,21 @@
+---
+title: "Lab4 - Regresiones Lineales Multiples"
+author: "Esvin Molina Guevara."
+date: "5/6/2022"
+output: html_document
+---
+
+### Importamos librerias a utilizar
+```{r}
+library(tidyverse)
+```
+
+### cargamos dataset, WeatherHistory.csv
+```{r}
+wh <- read_csv("WeatherHistory.csv")
+```
+
+```{r}
+wh
+```
+

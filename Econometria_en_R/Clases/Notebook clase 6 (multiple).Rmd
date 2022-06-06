@@ -1,0 +1,363 @@
+---
+title: "Multiple lineal regression"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+fish_original <- read_csv("fish.csv")
+```
+
+```{r}
+(fish <- fish_original %>% 
+  select(species = Species, mass = Weight, length= Length1))
+```
+
+```{r}
+mdl_mass_vs_lenght <- lm(mass ~ length, data= fish)
+mdl_mass_vs_lenght
+```
+
+```{r}
+mdl_mass_vs_species <- lm(mass ~ species+0, data=fish)
+mdl_mass_vs_species
+```
+
+```{r}
+mdl_mass_vs_both <- lm(mass~length+species+0, data=fish)
+mdl_mass_vs_both
+```
+
+```{r}
+coefficients(mdl_mass_vs_lenght)
+```
+
+```{r}
+coefficients(mdl_mass_vs_species)
+```
+```{r}
+coefficients(mdl_mass_vs_both)
+```
+
+```{r}
+ggplot(fish, aes(length,mass,color=species))+
+  geom_point()+
+  geom_smooth(method='lm',se=FALSE)
+```
+### caso con una independiente numerica
+```{r}
+explantory_data <- tibble(
+  length = seq(5,60,5)
+)
+glimpse(explantory_data)
+```
+
+```{r}
+explantory_data <- expand_grid(
+  length = seq(5,60,5),
+  species = unique(fish$species)
+)
+glimpse(explantory_data)
+```
+
+```{r}
+prediction_data <- explantory_data %>% 
+  mutate(
+    mass=predict(mdl_mass_vs_both,explantory_data)    
+  )
+
+```
+
+```{r}
+ggplot(fish, aes(length,mass,color=species))+
+  geom_point()+
+  geom_smooth(method='lm',se=FALSE)+
+  geom_point(data=prediction_data,size=3,shape=15)
+```
+
+```{r}
+(coeffs <- coefficients(mdl_mass_vs_lenght))
+intercept <- coeffs[1]
+slope <- coeffs[2]
+
+mdl_mass_vs_lenght
+```
+```{r}
+explantory_data %>% 
+  mutate(
+    mass = intercept + slope * length,
+    mass2 = predict( mdl_mass_vs_lenght, explantory_data)
+  )
+
+```
+
+```{r}
+(coeffs <- coefficients(mdl_mass_vs_both))
+
+```
+
+```{r}
+slope <- coeffs[1]
+intercept_bream <- coeffs[2]
+intercept_parkki<- coeffs[3]
+intercept_perch<- coeffs[4]
+intercept_pike<- coeffs[5]
+intercept_roach<- coeffs[6]
+intercept_smelt<- coeffs[7]
+intercept_whitefish<- coeffs[8]
+```
+
+```{r}
+explantory_data %>% 
+  mutate(
+    intercept = case_when(
+      species == "Bream" ~ intercept_bream,
+      species == "Parkki" ~ intercept_parkki,
+      species == "Perch" ~ intercept_perch,
+      species == "Pike" ~ intercept_pike,
+      species == "Roach" ~ intercept_roach,
+      species == "Smelt" ~ intercept_smelt,
+      species == "Whitefish" ~ intercept_whitefish
+    ),
+    mass=intercept + slope * length,
+    mass2=predict(mdl_mass_vs_both,explantory_data)
+    
+  )
+```
+
+R-squared Nos dice que tan bien se ajusta nuestro modelo [mas cercando a 1 mejor]
+RSE (residual standard error)  es el tamaño típico del error [mas pequeño mejor]
+
+```{r}
+library(broom)
+```
+
+```{r}
+mdl_mass_vs_lenght %>% 
+  glance() %>% 
+  pull(r.squared)
+```
+
+```{r}
+mdl_mass_vs_species %>% 
+  glance() %>% 
+  pull(r.squared)
+```
+
+```{r}
+mdl_mass_vs_both %>% 
+  glance() %>% 
+  pull(r.squared)
+
+```
+
+```{r}
+test <- mdl_mass_vs_lenght %>% 
+  glance()
+
+test[1:2]  
+```
+```{r}
+test <- mdl_mass_vs_species %>% 
+  glance()
+
+test[1:2] 
+```
+```{r}
+test <- mdl_mass_vs_both %>% 
+  glance()
+
+test[1:2] 
+```
+
+#### RSE
+```{r}
+ mdl_mass_vs_lenght %>% 
+  glance() %>% 
+  pull(sigma)
+```
+
+```{r}
+ mdl_mass_vs_species %>% 
+  glance() %>% 
+  pull(sigma)
+```
+
+```{r}
+ mdl_mass_vs_both %>% 
+  glance() %>% 
+  pull(sigma)
+```
+
+## Interacciones entre variables independientes
+
+```{r}
+ggplot(fish, aes(length,mass, color=species))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = FALSE)+
+  facet_wrap(vars(species))
+```
+
+
+```{r}
+lm(mass~length+species+0, data=fish)
+
+```
+#### forma implicita
+```{r}
+lm(mass~length*species+0, data=fish)
+
+```
+#### forma explicita
+```{r}
+lm(mass~species+species:length + 0, data=fish)
+
+```
+
+```{r}
+mdl_mass_vs_both_inter <- lm(mass~species+species:length + 0, data=fish)
+```
+
+```{r}
+explanatory_data <- expand_grid(
+  length = seq(5,60,5),
+  species = unique(fish$species)
+)
+```
+
+```{r}
+prediction_data <- explantory_data %>% 
+  mutate(mass = predict(mdl_mass_vs_both_inter,explanatory_data))
+
+prediction_data
+```
+
+```{r}
+ggplot(fish, aes(length,mass, color=species))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = FALSE)+
+  geom_point(data=prediction_data, size=3,shape=15)
+```
+
+### 3 o mas variables independientes
+```{r}
+(fish <- fish_original %>% 
+  select(species = Species, mass = Weight, length = Length1 , height = Height))
+```
+
+```{r}
+library(plot3D,magrittr)
+library(tidyverse)
+library(broom)
+```
+
+```{r}
+  scatter3D(fish$length,fish$height,fish$mass)
+```
+
+```{r}
+ggplot(fish, aes(length,height,color=mass))+
+  geom_point()+
+  scale_color_viridis_c(option='inferno')
+```
+
+```{r}
+mdl_mass_vs_len_hei <- lm(mass~length+height, data = fish)
+```
+
+```{r}
+explanatory_data <- expand_grid(
+  length = seq(5,80,5),
+  height = seq(2,40,2)
+)
+```
+```{r}
+prediction_data <- explanatory_data %>% 
+  mutate(
+    mass=predict(mdl_mass_vs_len_hei,explanatory_data)
+  )
+
+prediction_data
+```
+```{r}
+ggplot(fish, aes(length,height,color=mass))+
+  geom_point()+
+  scale_color_viridis_c(option='inferno')+
+  geom_point(data = prediction_data, shape = 15, size=3)
+```
+
+```{r}
+mdl_mass_vs_len_hei_inter <- lm(mass~length*height, data = fish)
+```
+
+```{r}
+mdl_mass_vs_len_hei %>% 
+  glance()
+```
+
+```{r}
+mdl_mass_vs_len_hei_inter %>% 
+  glance()
+```
+
+```{r}
+ggplot(fish, aes(length,height,color=mass))+
+  geom_point()+
+  scale_color_viridis_c(option='inferno')+
+  facet_wrap(vars(species))
+```
+
+```{r}
+mdl_inter_2w <- lm(mass~length+height+species+length:height+length:species+height:species+0, data=fish)
+```
+```{r}
+mdl_inter_3w <- lm(mass~length+height+species+length:height+height:species+length:height:species+0, data=fish)
+```
+
+```{r}
+mdl_inter_impl <- lm(mass~length*height*species+0, data=fish)
+```
+```{r}
+mdl_inter_impl2 <- lm(mass~(length+height+species)^2 +0, data=fish)
+```
+
+```{r}
+explanatory_data <- expand_grid(
+  length = seq(5,60,6),
+  height = seq(2,20,2),
+  species = unique(fish$species)
+)
+
+explanatory_data <- expand_grid(
+  length = 25,
+  height = 25,
+  species = "Bream"
+)
+
+explanatory_data
+```
+```{r}
+prediction_data <- explanatory_data %>% 
+  mutate(
+    mass = predict(mdl_inter_impl,explanatory_data)
+  )
+
+prediction_data
+```
+
+```{r}
+mdl_inter_impl  %>%  glance()
+```
+```{r}
+(fish <- fish_original %>% 
+  select( mass = Weight, length = Length1 , height = Height))
+```
+
+```{r}
+cor(fish, method = c("pearson", "kendall", "spearman"))
+```
+

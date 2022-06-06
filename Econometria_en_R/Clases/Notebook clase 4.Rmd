@@ -1,0 +1,423 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+### Importamos librearias a utilizar
+```{r}
+library(tidyverse)
+```
+
+### Cargamos nuestro dataset
+[Weather in Szeged 2006-2016](https://www.kaggle.com/datasets/budincsevity/szeged-weather)
+```{r}
+fish <- read_csv("Fish.csv")
+```
+
+### El objetivo es predecir la longitud *Length1* de los peces a partir de su peso *Weight*.
+Comenzamos entonces haciendo un subset de datos que incluya las variables que vamos a utilizar, en nuestro caso utilizaremos las variables:
+
+- Species
+- Length1
+- Weight
+
+Por comodidad, vamos a renombrar las columnas a utilizar de la siguiente manera:
+
+- species = Species
+- length = Length1
+- weight = Weight 
+```{r}
+# Subset de datos que incluye solo los peces cuya especie es "Bream"
+bream <- fish %>% 
+  filter(Species == "Bream")
+```
+
+```{r}
+# Seleccionamos solamente las tres variables a utilizar, y aprovechamos a cambiar nombre a dichas 
+# variables
+bream <- bream %>% 
+  select(species = Species, length = Length1, weight = Weight)
+```
+
+Podemos comenzar haciendo un gráfico para ver la relación entre las variables Longitud y Peso.
+En la gráfica le indicamos a ggplot que dibuje una linea que se ajuste al modelo de regresión lineal.
+```{r}
+ggplot(bream, aes(length, weight)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)    
+  # lm = linear model
+  # se = FALSE para que no muestre la banda de intervalo de confianza
+```
+
+Podemos observar que hay una cierta relación lineal entre las variables. Su dirección es en diagonal hacia arriba.  Pareciera que por cada cierto desplazamiento en la variable *length* hay un cierto desplazamiento en la variable *weight*.   Notese que la escala de la variable *length* (centimetros) es diferente de la escala de la variable *weight* (gramos).
+
+El objetivo de la regresión lineal es que la distancia entre los puntos observados y los puntos estimados (la linea estimada) sea lo mínimo posible.  Es decir es un problema de optimización: Minimizar la distancia entre los puntos observados y los puntos estimados.  
+
+La linea de regresión es la linea en la cual el error de todos los puntos es mínimo.  ggplot lo hace con el método de mínimos cuadrados.
+
+
+Dado que nosotros no tenemos acceso a todos los parámetros del modelo de regresión lineal que ggplot generó, entonces procedemos a crear nuestro propio modelo de regresión lineal. Para ello utilizamos la función *lm* para crear (entrenar) nuestro modelo.  Especificamos la variable dependiente *weight* y la variable independiente *length*
+
+```{r}
+mdl_weight_vs_length <- lm(formula = weight ~ length, data=bream)
+print(mdl_weight_vs_length)
+```
+
+Vemos que la función nos devuelve los coeficientes:
+
+- El intercepto (Intercept): -1035.35, que nos indica el valor de la variable independiente *length* cuando el valor de la variable dependiente *weight* es cero.  Es decir, el valor de la variable independiente en el que la linea de regresión intercepta el eje y.
+- La pendiente (length): , nos indica que por cada 54.55 cm de longitud *length*, varia 1 gramo en el peso *weight* 
+
+
+### Haciendo predicciones con nuestro modelo
+La idea del modelo creado es poder hacer predicciones.  Entonces vemos como le enviamos datos nuevos a evaluar con nuestro modelo.
+
+Si vemos nuestro subset de datos *bream* podemos observar que tenemos *length* desde el 23.2 hasta el 38.0, pero dentro de ese rango no están todos los valores posibles, por ejemplo, falta valores de *length* de 25, 34, entre otros.
+
+Entonces, vamos a crear un dataframe con la función *tibble* que contenga una columna *length* con valores de 20 a 40.
+
+
+# AQUI NOS QUEDAMOS: Video Clase04.mp4 Minuto 29
+
+```{r}
+explanatory_data <- tibble(length = 20:40)
+print(explanatory_data)
+```
+Usamos la función predict para predecir la variable *peso*.
+El dataset que enviamos debe contener la variable independiente (o variables independientes en caso de regresion multiple), y no debe tener la variable a predecir.
+
+```{r}
+predict(mdl_weight_vs_length,explanatory_data)
+```
+El resultado anterior nos devuelve un vector con las predicciones de los datos ingresados.   Para que sea mas entendible vamos a meter los datos en un dataframe que sea mas entendible.   Entonces a nuestro datos que enviamos a evaluar, le vamos agregar una columna con los valores de los resultados:
+
+
+```{r}
+predicted_data <- explanatory_data %>% 
+  mutate(
+    weight = predict(mdl_weight_vs_length, explanatory_data)
+  )
+
+print(predicted_data)
+```
+
+Ahora, graficamos nuestros datos, tanto los evaluados (junto con su valor estimado), y el modelo de regresion lineal propio de ggplot.   
+
+
+```{r}
+ggplot(bream, aes(length, weight)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(data=predicted_data, color = "red")
+```
+
+Podemos ver que la linea de regresion que creó ggplot (linea azul) pasan por los mismos puntos de nuestro modelo de regresion lineal.  Por ejemplo, nuetro modelo predice que para el valor de longitud = 40, el peso = 1146.65167
+
+
+Ahora probamos nuestro modelo con valores bastante alejados de los datos utilizados para entrenar el modelo.    Por ejemplo, vamos a probar con un dato de un pez con longitud = 10:
+
+```{r}
+explanatory_little <- tibble(length = 10)
+predicted_little <- explanatory_little %>% 
+  mutate(
+    weight = predict(mdl_weight_vs_length, explanatory_little)
+  )
+
+print(predicted_little)
+```
+
+Vemos que para longitud=10, nuestro modelo predice un peso = -489.8478.  Esto no es un valor real.  Pero podemos observar que mientras mas se aleje nuestros datos de prueba del dataset que usamos para entrenar nuestro modelo,  obtendremos valores extraños.   Esto no es culpa de nuestro modelo, ya que este trata de ajustarse lo mas que puede según los datos que usamos para entrenar.   Lo que debemos hacer para mejorar nuestras predicciones es recolectar mas datos de entrada.
+
+A modo de ejemplo, graficamos el punto junto con la linea regresion y vemos como se ve:
+
+```{r}
+ggplot(bream, aes(length, weight)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(data=predicted_little, color = "red")
+```
+
+### Objeto de tipo modelo
+
+```{r}
+mdl_weight_vs_length
+```
+
+```{r}
+coefficients(mdl_weight_vs_length)
+```
+
+```{r}
+fitted(mdl_weight_vs_length)
+```
+
+```{r}
+explanatory_data <- bream %>% 
+ select (length)
+
+predict(mdl_weight_vs_length,explanatory_data)
+```
+
+```{r}
+residuals(mdl_weight_vs_length)
+```
+
+```{r}
+bream$weight - fitted(mdl_weight_vs_length)
+```
+
+```{r}
+mdl_weight_vs_length$df.residual #grados de libertad
+```
+
+```{r}
+summary(mdl_weight_vs_length)
+```
+```{r}
+library(broom)
+```
+
+```{r}
+tidy(mdl_weight_vs_length)
+```
+
+```{r}
+augment(mdl_weight_vs_length)
+```
+
+```{r}
+glance(mdl_weight_vs_length)
+```
+
+### Transformar variables
+
+```{r}
+perch <- fish %>% 
+  filter(Species == "Perch")
+```
+
+```{r}
+perch <- perch %>% 
+  select(species = Species, length = Length1, weight = Weight)
+```
+
+```{r}
+ggplot(perch, aes(length, weight))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+ggplot(perch, aes(length^3, weight))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+mdl_perch <- lm(weight ~ I(length^3), data=perch)
+```
+```{r}
+(explanatory_data <- tibble( length = seq(10,40,5)))
+```
+
+```{r}
+predicted_data <- explanatory_data %>% 
+  mutate(
+    weight = predict(mdl_perch, explanatory_data)
+  )
+```
+
+```{r}
+ggplot(perch, aes(length^3, weight))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(data = predicted_data, color = "green")
+```
+
+```{r}
+ggplot(perch, aes(length, weight))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(data = predicted_data, color = "green")
+```
+
+```{r}
+grafica = perch %>% 
+  mutate(cubo = length ^3  )
+```
+### Interpretar las metricas del modelo para evaluarlo
+
+#### r cuadrado (proporcion de la variancia en la variable dependiente que se explica con la variable independiente 0 - 1)
+
+```{r}
+summary(mdl_weight_vs_length)
+```
+
+```{r}
+mdl_weight_vs_length %>% 
+  glance() %>% 
+  pull(r.squared)
+```
+
+### RSE (Residual Standard Error) 
+la diferencia "tipica" entre la prediccion y el valor observado. Tiene la misma dimension que la variable dependiente.
+```{r}
+summary(mdl_weight_vs_length)
+```
+
+
+
+```{r}
+mdl_weight_vs_length %>% 
+  glance() %>% 
+  pull(sigma)
+```
+
+#### calculo manual
+```{r}
+bream %>% 
+  mutate(
+    residuals_sq = residuals(mdl_weight_vs_length) ^2  ) %>% 
+  summarise(
+    resid_sum_of_sq = sum(residuals_sq),
+    deg_freedom = n() - 2,
+    rse = sqrt(resid_sum_of_sq/deg_freedom)
+  )
+```
+### RMSE (Root mean square error)
+
+```{r}
+bream %>% 
+  mutate(
+    residuals_sq = residuals(mdl_weight_vs_length) ^2  ) %>% 
+  summarise(
+    resid_sum_of_sq = sum(residuals_sq),
+    deg_freedom = n(),
+    rse = sqrt(resid_sum_of_sq/deg_freedom)
+  )
+```
+## Evaluar modelos de forma grafica
+
+```{r}
+# install.packages("ggfortify")
+library(ggfortify)
+```
+
+## Residual vs fitted
+```{r}
+autoplot(mdl_weight_vs_length,which = 1)
+```
+
+```{r}
+mdl_perch_bad <- lm(formula = weight ~ length, data = perch)
+autoplot(mdl_perch_bad,which = 1)
+```
+### QQ plot
+
+```{r}
+autoplot(mdl_weight_vs_length,which = 2)
+```
+```{r}
+autoplot(mdl_perch_bad,which = 2)
+```
+### scale location
+
+```{r}
+autoplot(mdl_weight_vs_length,which = 3)
+```
+
+```{r}
+autoplot(mdl_perch_bad,which = 3)
+```
+
+```{r}
+autoplot(mdl_perch_bad,
+         which = 1:3,
+         nrow = 3,
+         ncol = 1
+         )
+```
+
+### Outliers (atipicos)
+
+
+```{r}
+roach <- fish %>% 
+  filter(Species == "Roach")
+```
+```{r}
+(roach <- roach %>% 
+  select(species = Species, length= Length1, weight = Weight))
+```
+
+```{r}
+ggplot(roach, aes(length,weight)) +
+  geom_point()+
+  geom_smooth(method = 'lm', se = FALSE)
+
+```
+
+```{r}
+roach %>% 
+  mutate(
+    has_extreme_length = length < 15 | length > 26
+  ) %>% 
+  ggplot( aes(length,weight)) +
+  geom_point(aes(color= has_extreme_length))+
+  geom_smooth(method = 'lm', se = FALSE)
+```
+
+```{r}
+mdl_roach <- lm(weight ~ length, data = roach)
+hatvalues(mdl_roach)
+augment(mdl_roach)
+```
+
+```{r}
+mdl_roach %>% 
+  augment() %>% 
+  select(weight, length, leverage = .hat) %>% 
+  arrange(desc(leverage)) %>% 
+  head()
+```
+### Influencia del atípico
+
+```{r}
+cooks.distance(mdl_roach)
+```
+
+```{r}
+augment(mdl_roach)
+```
+
+```{r}
+mdl_roach %>% 
+  augment() %>% 
+  select (weight, length, cooks_dist = .cooksd) %>% 
+  arrange(desc(cooks_dist)) %>% 
+  head()
+```
+
+```{r}
+roach_not_short <- roach %>% 
+  filter(length != 12.9)
+```
+
+```{r}
+ggplot(roach, aes(length, weight)) +
+  geom_point()+
+  geom_smooth(method="lm", se = FALSE)+
+  geom_smooth(
+    method="lm", se = FALSE,
+    data = roach_not_short, color = "red"
+  )
+```
+
+```{r}
+summary(mdl_roach)
+```
+```{r}
+mdl_roach_no_short =  lm(weight ~length, data = roach_not_short)
+summary(mdl_roach_no_short)
+```
+
