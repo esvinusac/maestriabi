@@ -137,21 +137,32 @@ ggplot(bream, aes(length, weight)) +
   geom_point(data=predicted_little, color = "red")
 ```
 
+Ahora vamos a analizar como accedemos a kas caracteristicas o propiedades tiene el modelo que creamos: mdl_weight_vs_length
+
+
 ### Objeto de tipo modelo
 
 ```{r}
 mdl_weight_vs_length
 ```
+Solamente utilizando la variable que contiene nuestro modelo mdl_weight_vs_length, no podemos acceder al valor del intercepto ni al de la pendiete.  Para acceder a ellos utilizamos diferentes funciones en R.
+
+La función *coefficients* nos devuelve un vector con los valores del intercepto y la pendiente:
 
 ```{r}
 coefficients(mdl_weight_vs_length)
 ```
 
+La función *fitted* nos devuelve un vector con el valor de las predicciones del dataset original.  Nos da todos los valores de la linea azul.
+
 ```{r}
 fitted(mdl_weight_vs_length)
 ```
 
+Ahora vamos a realizar nuestro modelo para predecir los valores del dataset original (bream).
+
 ```{r}
+# delimitamos el dataset original para que solo tenga la variable independiente
 explanatory_data <- bream %>% 
  select (length)
 
@@ -216,6 +227,7 @@ ggplot(perch, aes(length^3, weight))+
 ```{r}
 mdl_perch <- lm(weight ~ I(length^3), data=perch)
 ```
+
 ```{r}
 (explanatory_data <- tibble( length = seq(10,40,5)))
 ```
