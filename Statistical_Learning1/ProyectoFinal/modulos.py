@@ -71,3 +71,16 @@ def getColNansDict(df, colnames):
         cols_na_tot[col] = df[col].isnull().sum()
 
     return cols_na_tot
+
+
+
+def getCategoricalCols(df):
+    """
+    función que retorna las columnas que son categoricas
+    """
+    colnames = df.columns
+    cats_cols = []
+    for col in colnames:
+        if(df[col].dtypes == 'object'):
+            cats_cols.append(col)
+    return cats_cols    
